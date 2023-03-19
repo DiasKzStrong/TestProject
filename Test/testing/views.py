@@ -1,4 +1,3 @@
-import json
 from django.shortcuts import render,get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.decorators import action
@@ -8,10 +7,9 @@ from rest_framework import generics
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAdminUser,IsAuthenticated
+from rest_framework.permissions import *
 from django.contrib.auth import authenticate,login,logout
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from .models import *
 from .serializers import *
@@ -34,6 +32,11 @@ def user_login(request):
             return JsonResponse({'user':user_obj})
         return JsonResponse({'message':'Error login'})
     return JsonResponse({'message':'You should send POST request'})
+
+
+def user_logout(request):
+    logout(request)
+    return JsonResponse({'message':'Succesfully logout'})
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -71,15 +74,15 @@ class UserProfileMeView(generics.RetrieveUpdateAPIView):
     
 class UserView(generics.ListAPIView):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAdminUser]
+    serializer_class = CustomUserSerializer
+    permission_classes = [OnlyAdminPost]
     
     def get_queryset(self):
         queryset = super().get_queryset()
         if 'username' in self.request.query_params:
             queryset = queryset.filter(username=self.request.query_params['username'])
         return queryset
-
+    
 class UserMeView(generics.RetrieveUpdateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -95,7 +98,7 @@ class UserSingleView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
-    permission_classes = [IsAdminUser]
+    permission_classes = [OnlyAdminPost]
     
 class UserStatisticsView(generics.ListCreateAPIView):
     queryset = UserStatistics.objects.all()
@@ -127,8 +130,24 @@ class UserStatisticsMeView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         queryset = self.get_queryset()
         queryset = self.filter_queryset(queryset)
-        
-        return queryset.get(user=self.request.user)
+        try:
+            instance = queryset.get(user=self.request.user)
+        except ObjectDoesNotExist:
+            UserStatistics.objects.create(user=self.request.user)
+            instance = queryset.get(user=self.request.user)
+        return instance
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        objects_to_add = request.data.get('done_tests', [])
+        for obj_id in objects_to_add:
+            obj = Test.objects.get(id=obj_id)
+            instance.done_tests.add(obj)
+
+        instance.save()
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
     
 #other views 
 
@@ -155,6 +174,7 @@ class QuestionsView(generics.ListCreateAPIView):
     filter_backends = [OrderingFilter]
     ordering_fields = ['test']
     permission_classes = [OnlyAdminPost]
+    
     def get_queryset(self):
         queryset = super().get_queryset()
         if 'test' in self.request.query_params:
@@ -180,7 +200,10 @@ class LikesView(viewsets.ModelViewSet):
     queryset = Likes.objects.all()
     serializer_class = LikesSerializer
     lookup_field = 'test__id'
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    
+    def get_queryset(self):
+        return super().get_queryset()
     
     def get_object(self):
         queryset = self.get_queryset()
@@ -196,17 +219,11 @@ class CommentsView(viewsets.ModelViewSet):
     queryset = Comments.objects.all()
     serializer_class = CommentSerializer
     lookup_field = 'id'
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if self.request.user.is_superuser:
-            return super().get_queryset()
-        queryset = super().get_queryset()
-        return queryset.filter(user=self.request.user)
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_object(self):
         instance = super().get_object()
-        if instance.user == self.request.user:
+        if instance.user == self.request.user or self.request.user.is_superuser:
             return instance
         else:
             self.permission_classes = [NotFoundBlock]

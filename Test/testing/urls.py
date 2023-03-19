@@ -20,10 +20,11 @@ urlpatterns = [
     path('users/<str:username>',UserSingleView.as_view(),name='usersingle'),
     path('userstats',UserStatisticsView.as_view(),name='userstats'),
     path('userstats/<str:user__username>',UserStatisticsSingleView.as_view(),name='userstatssingle'),
-    path('userstats/me',UserStatisticsMeView.as_view(),name='userstatsme'),
-    path('user-profile/<str:user_username>',UserProfileSingleView.as_view(),name='user-profile'),
-    path('user-profile/me',UserProfileMeView.as_view(),name='userprofileme'),
+    path('user/stats/me',UserStatisticsMeView.as_view(),name='userstatsme'),
+    path('userprofile/<str:user_username>',UserProfileSingleView.as_view(),name='user-profile'),
+    path('user/profile/me',UserProfileMeView.as_view(),name='userprofileme'),
     path('login',user_login,name='login'),
+    path('logout',user_logout,name='logout'),
     path('register',UserRegistrationView.as_view(),name='register'),
     
     #viewsets 

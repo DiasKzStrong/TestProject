@@ -112,11 +112,28 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = '__all__'
         
-        
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['user'] = instance.user.username
+        return rep
+
+
 class UserSerializer(serializers.ModelSerializer):
+    likes = LikesSerializer(source='user_likes',many=True,read_only=True)
     user_profile = UserProfileSerializer(source='profile',many=True)
     user_statistic = UserStatisticsSerializer(source='statistic',many=True)
     class Meta:
         model = User
-        field= ['__all__','user_profile','user_statistic']
+        field= ['__all__','user_profile','user_statistic','likes']
+        exclude = ['password','is_superuser','groups','user_permissions','is_staff','is_active']
+
+class CustomUserSerializer(UserSerializer):
+    class Meta:
+        model = User
         exclude = ['password']
+    
+    def to_representation(self, instance):
+        user = self.context['request'].user
+        if user.is_superuser:
+            return super().to_representation(instance)
+        return UserSerializer(instance, context=self.context).data

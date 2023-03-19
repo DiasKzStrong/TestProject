@@ -18,8 +18,9 @@ class Category(models.Model):
     
     class Meta:
         unique_together = ['name']
+        
 class Test(models.Model):
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=255,unique=True)
     category = models.ForeignKey(Category,on_delete=models.CASCADE)
     create_at = models.DateTimeField(auto_now_add=True)
     views_count = models.IntegerField(default=0)
@@ -42,7 +43,7 @@ class Questions(models.Model):
         
 
 class UserStatistics(models.Model):
-    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='statistic')
+    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='statistic',db_constraint=True,to_field='username')
     done_tests = models.ManyToManyField(Test,related_name='done_tests')
     
 
@@ -56,11 +57,13 @@ class UserProfile(models.Model):
     
     class Meta:
         unique_together = ['user']
-        
-        
+         
 class Likes(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='user_likes')
-    test = models.ForeignKey(Test,on_delete=models.CASCADE,related_name='test_likes',unique=True)
+    test = models.ForeignKey(Test,on_delete=models.CASCADE,related_name='test_likes')
+    
+    class Meta:
+        unique_together = ('test', 'user',)
     
 class Comments(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='user_comments')
