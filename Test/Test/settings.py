@@ -27,6 +27,16 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
+#email cofuguration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.mail.ru'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'dias.ziyada12345@mail.ru'  # Replace with your email address
+EMAIL_HOST_PASSWORD = 'pu6JE71u0mtrSVFkJczh'  # Replace with your email password
+DEFAULT_FROM_EMAIL = 'dias.ziyada12345@mail.ru' 
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -54,6 +64,9 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ]
 
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 CORS_ORIGIN_ALLOW_ALL = True
 
 CORS_ORIGIN_WHITELIST = [

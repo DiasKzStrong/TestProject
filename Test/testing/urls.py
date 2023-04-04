@@ -15,6 +15,9 @@ urlpatterns = [
     path('category',CategoryView.as_view(),name='category'),# Категориялар
     path('category/<str:name>',CategorySingleView.as_view(),name='categorysingle'), # Категорияларга ид аркылы киресин
     path('questions',QuestionsView.as_view(),name='questions'),# каждый сурак
+    path('score',ScoreView.as_view(),name='score'),
+    path('test/<int:test_id>/score',ScoreInlineView.as_view(),name='scoreinline'),
+    path('answer',AnswerView.as_view(),name='answer'),
     path('users',UserView.as_view(),name='users'),# Букил юзерлар
     path('users/me',UserMeView.as_view(),name='me'),# Аккаунтка кирген адамның информациясы
     path('users/<str:username>',UserSingleView.as_view(),name='usersingle'),# Каждый юзерге аты бойынша киресин
@@ -29,5 +32,13 @@ urlpatterns = [
     
     #viewsets 
     path('',include(router.urls)),# на жерде тесттар и лайктар и комментар
+    
+    #Парольские темы
+    path('password-update', PasswordUpdateView.as_view()),
+    path('reset-password/request/', PasswordResetRequestView.as_view()),
+    path('reset-password/<str:uidb64>/<str:token>/', PasswordResetView.as_view()),
+    
+    #
+    path('test/<int:pk>/view',add_view,name='addview')
     
 ]

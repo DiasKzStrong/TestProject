@@ -1,6 +1,6 @@
 from django.shortcuts import render,get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework.decorators import action
+from rest_framework.views import APIView
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework import generics
@@ -11,10 +11,18 @@ from rest_framework.permissions import *
 from django.contrib.auth import authenticate,login,logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.hashers import check_password
 from .models import *
 from .serializers import *
 from .paginators import *
 from .permissions import *
+
+from django.core.mail import EmailMessage
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+from django.utils.http import urlsafe_base64_decode
+
 # Create your views here.
 
 # Classes for all objects
@@ -123,6 +131,21 @@ class UserStatisticsSingleView(generics.RetrieveUpdateDestroyAPIView):
             raise NotFound('object does not exists')
         return return_queryset
     
+    
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        objects_to_add = request.data.get('done_tests', [])
+        for obj_id in objects_to_add:
+            obj = Test.objects.get(id=obj_id)
+            instance.done_tests.add(obj)
+
+        instance.save()
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+    
+    
+    
 class UserStatisticsMeView(generics.RetrieveUpdateAPIView):
     queryset = UserStatistics.objects.all()
     serializer_class = UserStatisticsSerializer
@@ -149,13 +172,15 @@ class UserStatisticsMeView(generics.RetrieveUpdateAPIView):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
     
+    
+    
 #other views 
-
 
 class TestView(generics.ListCreateAPIView):
     queryset = Test.objects.all()
     serializer_class = TestSerializer
     permission_classes = [OnlyAdminPost]
+    
     
 class CategoryView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -181,6 +206,9 @@ class QuestionsView(generics.ListCreateAPIView):
             queryset = queryset.filter(test__title=self.request.query_params['test'])
         return queryset
     
+class AnswerView(generics.ListCreateAPIView):
+    queryset = Answer.objects.all()
+    serializer_class = AnswerSerializer
         
 
 # Classes for single objects
@@ -194,7 +222,6 @@ class TestSingleView(viewsets.ModelViewSet):
         instance = self.get_object()
         serializers = self.get_serializer(instance)
         return Response(serializers.data,status=status.HTTP_200_OK)
-
     
 class LikesView(viewsets.ModelViewSet):
     queryset = Likes.objects.all()
@@ -206,9 +233,11 @@ class LikesView(viewsets.ModelViewSet):
         return super().get_queryset()
     
     def get_object(self):
-        queryset = self.get_queryset()
-        object = get_object_or_404(queryset,user=self.request.user,test__id = self.kwargs['test__id'])
-        return object
+        if self.request.user.is_authenticated:          
+            queryset = self.get_queryset()
+            object = get_object_or_404(queryset,user=self.request.user,test__id = self.kwargs['test__id'])
+            return object
+        raise NotFound('authentication credentials were not provided')
     
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -233,3 +262,113 @@ class CommentsView(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.delete()
         return Response('Object succesfully deleted',status=status.HTTP_204_NO_CONTENT)
+
+
+class ScoreView(generics.ListCreateAPIView):
+    queryset = Score.objects.all()
+    serializer_class = ScoreSerializer
+    permission_classes = [IsAuthenticated]
+
+class ScoreInlineView(generics.RetrieveUpdateAPIView):
+    queryset = Score.objects.all()
+    serializer_class = ScoreSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = ('test_id','user_id')
+    def get_object(self):
+        queryset = self.get_queryset()
+        queryset = self.filter_queryset(queryset)
+        print(self.kwargs)
+        obj = queryset.get(test=self.kwargs[self.lookup_field[0]], user=self.request.user)
+        
+        return obj
+    
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        score = float(request.data['score'])
+        if score > instance.score:
+            instance.score = score
+            instance.save()
+        else:
+            return Response({'error':'score must be higher than current score'})
+        return Response(ScoreSerializer(instance).data,status=status.HTTP_202_ACCEPTED)
+    
+    
+# Парольдын темасы 
+
+class PasswordUpdateView(APIView):
+    
+    @csrf_exempt
+    def post(self, request):
+        serializer = PasswordUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            current_password = serializer.data.get('current_password')
+            new_password = serializer.data.get('new_password')
+            if check_password(current_password, user.password):
+                user.set_password(new_password)
+                user.save()
+                return Response({'message':'password changed'},status=status.HTTP_200_OK)
+            else:
+                return Response({'current_password': ['Incorrect password.']}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+
+class PasswordResetRequestView(APIView):
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.data.get('email')
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response({'email': ['User with this email does not exist.']}, status=status.HTTP_400_BAD_REQUEST)
+            token_generator = PasswordResetTokenGenerator()
+            token = token_generator.make_token(user)
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+            reset_link = f"{request.scheme}://{request.get_host()}/reset-password/{uidb64}/{token}"
+            email = EmailMessage(
+                'Password reset link',
+                f'Use the following link to reset your password: {reset_link}',
+                to=[email]
+                
+            )
+            email.content_subtype = 'html'
+            email.send()
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetView(APIView):
+    def post(self, request, uidb64, token):
+        serializer = PasswordResetSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                uid = urlsafe_base64_decode(uidb64).decode('utf-8')
+                user = User.objects.get(pk=uid)
+            except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+                user = None
+            if user is not None and PasswordResetTokenGenerator().check_token(user, token):
+                new_password = serializer.data.get('new_password')
+                user.set_password(new_password)
+                user.save()
+                return Response(status=status.HTTP_200_OK)
+            else:
+                return Response({'token': ['Invalid token.']}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# Just views 
+
+
+
+def add_view(request,pk):
+    test = get_object_or_404(Test, id=pk)
+    views = ViewsCount.objects.get(test=test)
+    views.views = views.views+1
+    views.save()
+    return JsonResponse({'message':'succesfully added'})
