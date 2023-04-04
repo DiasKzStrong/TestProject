@@ -18,7 +18,7 @@ from .paginators import *
 from .permissions import *
 
 from django.core.mail import EmailMessage
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.contrib.auth.tokens import PasswordResetTokenGenerator,default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.utils.http import urlsafe_base64_decode
@@ -361,6 +361,55 @@ class PasswordResetView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+
+# email reset
+
+class EmailRequestView(APIView):
+    def post(self, request):
+        serializer = PasswordResetSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.data.get('email')
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response({'detail': 'User with this email does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+            token_generator = default_token_generator
+            token = token_generator.make_token(user)    
+            reset_url = f'{request.scheme}://{request.get_host()}/reset-password/{user.pk}/{token}/'
+            email = EmailMessage(
+                'Reset email',
+                reset_url,
+                to=[email]
+                
+            )
+            email.content_subtype = 'html'
+            email.send()
+            return Response({'detail': 'Email reset email has been sent.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmailResetView(APIView):
+    def put(self,request,pk,token):
+        serializer = PasswordResetSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.data.get('email')
+            try:
+                user = User.objects.get(pk=pk)
+            except User.DoesNotExist:
+                return Response({"message":"User does not exist"},status=status.HTTP_404_NOT_FOUND)
+            if User.objects.filter(email=email).exists():
+                return Response({"message":"that email already taken"})
+            if user and PasswordResetTokenGenerator().check_token(user,token):
+                user.email = email
+                user.save()
+                return Response(status=status.HTTP_202_ACCEPTED)
+            else:
+                return Response({"message":"not valid token"},status=status.HTTP_403_FORBIDDEN)
+        else:
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+        
 
 # Just views 
 

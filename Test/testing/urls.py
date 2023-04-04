@@ -38,6 +38,11 @@ urlpatterns = [
     path('reset-password/request/', PasswordResetRequestView.as_view()),
     path('reset-password/<str:uidb64>/<str:token>/', PasswordResetView.as_view()),
     
+    
+    #email тема
+    path('reset-email/request/', PasswordResetRequestView.as_view()),
+    path('reset-email/<str:uidb64>/<str:token>/', PasswordResetView.as_view()),
+    
     #
     path('test/<int:pk>/view',add_view,name='addview')
     
