@@ -1,0 +1,69 @@
+.startTest-container{
+    width: 100%;
+}
+
+.startTest-block{
+    width: 45%;
+    margin: 0 auto;
+}
+
+.startTest-header{
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.start-card-block{
+    width: 100%;
+    margin-bottom: 50px;
+}
+
+.start-card-item{
+    width: 100%;
+    height: 600px;
+    background-color: #263238;
+    border: none;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    margin-top: 30px;
+}
+
+.start-card-img {
+    width: 100%;
+    height: 300px;
+    border-radius: 15px 15px 0 0;
+}
+.start-card-information{
+    height: 200px;
+    padding: 10px;
+    text-align: center;
+    color: white;
+}
+
+.card-description{
+    height: 150px;
+}
+
+.button4{
+    width: 400px;
+    height: 60px;
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #dfdfdf;
+    background-color: #3a454b;
+    border: none;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all .2s ease;
+    margin-bottom: 50px;
+    margin: 0 auto;
+}
+
+.button4:hover {
+    background-color: #ffca28;
+    color: #263238;
+}

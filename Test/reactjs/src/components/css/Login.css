@@ -1,0 +1,111 @@
+.login-container{
+    font-family: "Montserrat",sans-serif;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.login-welcome-block{
+    width: 60%;
+    height: 90vh;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background-image: url("../../../public/authorize-bg.svg");
+    background-size: cover;
+    margin: -23px;
+}
+
+.welcome-wrapper{
+    width: 60%;
+    color: white;
+}
+
+.welcome-text{
+    color: #ffca28;
+}
+
+.login-form-block{
+    width: 40%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.login-text{
+    color: gray;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.login-active-text{
+    color: #ffca28;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.form-wrapper{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.input{
+    /* font-family: Montserrat,sans-serif; */
+    width: 270px;
+    height: 60px;
+    font-size: 1.1rem;
+    color: white;
+    font-weight: 600;
+    background-color: #263238;
+    border: none;
+    border-radius: 10px;
+    padding-left: 10px;
+}
+
+.button3 {
+    min-width: 280px;
+    height: 60px;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #ffca28;
+    background-color: #263238;
+    border: none;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all .2s ease;
+}
+
+.button3:hover {
+    background-color: #ffca28;
+    color: #263238;
+}
+
+.form{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 25px;
+}
+
+.error_text{
+    font-size: 10px;
+    color: red;
+    margin: -20px 0;
+}
+
+.button3:disabled{
+    color: #a3925c;
+    background-color: #7a7e81;
+    transition: .2s all ease;
+}

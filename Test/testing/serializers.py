@@ -8,16 +8,18 @@ from .models import *
 class AnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Answer
-        fields = '__all__'
+        fields = ('answer_id','question','answer_text')
+    
+
         
 class QuestionsSerializer(serializers.ModelSerializer):
-    answer = AnswerSerializer(source='answers',many=True)
+    answer = AnswerSerializer(source='answers',many=True,read_only=True)
     class Meta:
         model = Questions
-        fields = ('id','test','question_text','answer')
+        fields = ('question_id','test','question_text','answer')
     
     def to_representation(self, instance):
-        rep = super().to_representation(instance)
+        rep = super().to_representation(instance)   
         rep['test'] = instance.test.title
         return rep
 
@@ -78,7 +80,7 @@ class TestSerializer(serializers.ModelSerializer):
         rep['category'] = instance.category.name
         rep['views'] = ":".join([str(view['views']) for view in rep['views']])
         return rep
-        
+    
     def create(self, validated_data):
         test = Test.objects.create(**validated_data)
         test.save()

@@ -1,3 +1,5 @@
+import json
+
 from django.shortcuts import render,get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.views import APIView
@@ -203,7 +205,7 @@ class QuestionsView(generics.ListCreateAPIView):
     def get_queryset(self):
         queryset = super().get_queryset()
         if 'test' in self.request.query_params:
-            queryset = queryset.filter(test__title=self.request.query_params['test'])
+            queryset = queryset.filter(test__id=self.request.query_params['test'])
         return queryset
     
 class AnswerView(generics.ListCreateAPIView):
@@ -354,7 +356,7 @@ class PasswordResetView(APIView):
                 new_password = serializer.data.get('new_password')
                 user.set_password(new_password)
                 user.save()
-                return Response(status=status.HTTP_200_OK)
+                return Response({"message":"succesfully changed"},status=status.HTTP_200_OK)
             else:
                 return Response({'token': ['Invalid token.']}, status=status.HTTP_400_BAD_REQUEST)
         else:
@@ -367,7 +369,7 @@ class PasswordResetView(APIView):
 
 class EmailRequestView(APIView):
     def post(self, request):
-        serializer = PasswordResetSerializer(data=request.data)
+        serializer = PasswordResetRequestSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.data.get('email')
             try:
@@ -376,15 +378,15 @@ class EmailRequestView(APIView):
                 return Response({'detail': 'User with this email does not exist.'}, status=status.HTTP_404_NOT_FOUND)
             token_generator = default_token_generator
             token = token_generator.make_token(user)    
-            reset_url = f'{request.scheme}://{request.get_host()}/reset-password/{user.pk}/{token}/'
-            email = EmailMessage(
+            uid64 = urlsafe_base64_encode(force_bytes(user.pk))
+            reset_url = f'{request.scheme}://{request.get_host()}/reset-email/{uid64}/{token}/'
+            email_send = EmailMessage(
                 'Reset email',
                 reset_url,
                 to=[email]
-                
             )
-            email.content_subtype = 'html'
-            email.send()
+            email_send.content_subtype = 'html'
+            email_send.send()
             return Response({'detail': 'Email reset email has been sent.'}, status=status.HTTP_200_OK)
         else:
             return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -392,11 +394,12 @@ class EmailRequestView(APIView):
 
 class EmailResetView(APIView):
     def put(self,request,pk,token):
-        serializer = PasswordResetSerializer(data=request.data)
+        serializer = PasswordResetRequestSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.data.get('email')
             try:
-                user = User.objects.get(pk=pk)
+                uid64 = urlsafe_base64_decode(pk).decode('utf-8')
+                user = User.objects.get(pk=uid64)
             except User.DoesNotExist:
                 return Response({"message":"User does not exist"},status=status.HTTP_404_NOT_FOUND)
             if User.objects.filter(email=email).exists():
@@ -404,7 +407,7 @@ class EmailResetView(APIView):
             if user and PasswordResetTokenGenerator().check_token(user,token):
                 user.email = email
                 user.save()
-                return Response(status=status.HTTP_202_ACCEPTED)
+                return Response({"message":"succesfully changed"},status=status.HTTP_202_ACCEPTED)
             else:
                 return Response({"message":"not valid token"},status=status.HTTP_403_FORBIDDEN)
         else:
@@ -421,3 +424,35 @@ def add_view(request,pk):
     views.views = views.views+1
     views.save()
     return JsonResponse({'message':'succesfully added'})
+
+
+
+
+
+def checking_answer(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        test_id = data['test_id']
+        answers = data['answers']
+        
+        test = Test.objects.get(id=test_id)
+        questions = test.questions.all()
+        correct_answers = {}
+        
+        # get correct answers for all questions
+        for question in questions:
+            correct_answer = question.answers.get(is_correct=True).id
+            correct_answers[question.id] = correct_answer
+        
+        # validate answers submitted by user
+        result = {}
+        for answer in answers:
+            if answer['answer_id'] == correct_answers.get(int(answer['question_id'])):
+                result[answer['question_id']] = True
+            else:
+                result[answer['question_id']] = False
+        
+        
+        return JsonResponse(result)
+        
+    return JsonResponse({"message": "Method not allowed"})

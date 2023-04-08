@@ -40,10 +40,12 @@ urlpatterns = [
     
     
     #email тема
-    path('reset-email/request/', PasswordResetRequestView.as_view()),
-    path('reset-email/<str:uidb64>/<str:token>/', PasswordResetView.as_view()),
+    path('reset-email/request/', EmailRequestView.as_view()),
+    path('reset-email/<int:pk>/<str:token>/', EmailResetView.as_view()),
     
     #
-    path('test/<int:pk>/view',add_view,name='addview')
+    path('test/<int:pk>/view',add_view,name='addview'),
     
+    
+    path('checking',checking_answer)
 ]

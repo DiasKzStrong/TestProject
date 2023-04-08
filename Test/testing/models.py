@@ -37,15 +37,19 @@ class ViewsCount(models.Model):
         unique_together = ('test','views')
     
 class Questions(models.Model):
+    question_id = models.PositiveIntegerField()
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='questions',db_constraint=True,to_field='title')
     question_text = models.TextField(unique=True)
 
     def __str__(self):
         return self.question_text
 
+    class Meta:
+        unique_together = ('test','question_text','question_id')
 
 class Answer(models.Model):
     question = models.ForeignKey(Questions, on_delete=models.CASCADE, related_name='answers',to_field='question_text')
+    answer_id = models.PositiveIntegerField()
     answer_text = models.TextField()
     is_correct = models.BooleanField(default=False)
 
@@ -53,8 +57,9 @@ class Answer(models.Model):
         return self.answer_text
     
     class Meta:
-        unique_together = ['question', 'answer_text']
-
+        unique_together = ['question', 'answer_text','answer_id']
+        ordering = ['answer_id']
+        
 class UserStatistics(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='statistic',db_constraint=True,to_field='username')
     done_tests = models.ManyToManyField(Test,related_name='done_tests')
